@@ -1,0 +1,22 @@
+[build]
+builder = "NIXPACKS"
+
+[deploy]
+startCommand = "python bot.py"
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 10
+
+[[deploy.environmentVariables]]
+name = "BOT_TOKEN"
+description = "Telegram Bot Token from @BotFather"
+default = "8963786165:AAGDcSbQxbv7sGUfrJK95TpeT-u7nJMO2ps"
+
+[[deploy.environmentVariables]]
+name = "ADMIN_ID"
+description = "Your Telegram User ID"
+default = "6550771842"
+
+[[deploy.environmentVariables]]
+name = "UPI_ID"
+description = "UPI ID for payments"
+default = "rsamofflceprv.ldt@fam"

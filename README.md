@@ -1,6 +1,18 @@
 # RepotechBot - Telegram Coin Management Bot
 
+[![Deploy on Railway](https://railway.app/button.svg)](https://railway.app/template/repotech-bot?referralCode=github)
+
 A comprehensive Telegram bot for coin management, referral system, daily rewards, and Free Fire services.
+
+## 🚀 Quick Deploy (5 Minutes)
+
+**Instant Deploy to Railway:** Click the button above or follow [RAILWAY_DEPLOY.md](RAILWAY_DEPLOY.md)
+
+Your bot is **pre-configured** and ready to deploy:
+- ✅ Admin ID: 6550771842
+- ✅ Bot Token: 8963786165:AAGDcSbQxbv7sGUfrJK95TpeT-u7nJMO2ps
+- ✅ 161 Free Fire guest accounts ready
+- ✅ All dependencies configured
 
 ## Features
 
