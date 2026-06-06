@@ -7,5 +7,19 @@
     "startCommand": "python bot.py",
     "restartPolicyType": "ON_FAILURE",
     "restartPolicyMaxRetries": 10
+  },
+  "env": {
+    "BOT_TOKEN": {
+      "description": "Telegram Bot Token",
+      "default": "8963786165:AAGDcSbQxbv7sGUfrJK95TpeT-u7nJMO2ps"
+    },
+    "ADMIN_ID": {
+      "description": "Your Telegram User ID",
+      "default": "6550771842"
+    },
+    "UPI_ID": {
+      "description": "UPI ID for payments",
+      "default": "rsamofflceprv.ldt@fam"
+    }
   }
 }
