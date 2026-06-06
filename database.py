@@ -440,3 +440,45 @@ class Database:
             cursor = await db.execute("SELECT user_id FROM users WHERE is_banned = 0")
             rows = await cursor.fetchall()
             return [row[0] for row in rows]
+
+    async def count_likes_today(self, user_id: int, today_start: str) -> int:
+        """Count likes requests user made today"""
+        async with aiosqlite.connect(self.db_path) as db:
+            cursor = await db.execute(
+                "SELECT COUNT(*) FROM likes_usage WHERE user_id = ? AND timestamp >= ?",
+                (user_id, today_start)
+            )
+            row = await cursor.fetchone()
+            return row[0] if row else 0
+
+    async def add_likes_usage(
+        self, user_id: int, uid: str, likes_sent: int, coins_spent: int
+    ) -> bool:
+        """Add likes usage record"""
+        async with aiosqlite.connect(self.db_path) as db:
+            try:
+                await db.execute(
+                    """INSERT INTO likes_usage (user_id, uid, likes_sent, coins_spent, timestamp)
+                       VALUES (?, ?, ?, ?, ?)""",
+                    (user_id, uid, likes_sent, coins_spent, datetime.now().isoformat()),
+                )
+                await db.commit()
+                return True
+            except Exception as e:
+                logger.error(f"Error adding likes usage: {e}")
+                return False
+
+    async def get_likes_history(self, user_id: int, limit: int = 5) -> List[Dict[str, Any]]:
+        """Get user's likes history"""
+        async with aiosqlite.connect(self.db_path) as db:
+            db.row_factory = aiosqlite.Row
+            cursor = await db.execute(
+                """SELECT uid, likes_sent, coins_spent, timestamp
+                   FROM likes_usage
+                   WHERE user_id = ?
+                   ORDER BY timestamp DESC
+                   LIMIT ?""",
+                (user_id, limit)
+            )
+            rows = await cursor.fetchall()
+            return [dict(row) for row in rows]

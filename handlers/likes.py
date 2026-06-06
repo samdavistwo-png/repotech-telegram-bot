@@ -6,7 +6,6 @@ Handles /likes, /likestatus, and /likehistory commands
 from telegram import Update
 from telegram.ext import ContextTypes
 from utils.decorators import check_banned, user_exists
-from database import get_db
 import logging
 import sys
 import os
@@ -47,17 +46,12 @@ async def load_guest_accounts():
         return []
 
 
-async def get_user_likes_today(user_id: int) -> int:
+async def get_user_likes_today(db, user_id: int) -> int:
     """Get number of like requests user made today"""
-    db = await get_db()
     today_start = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
 
-    cursor = await db.execute(
-        "SELECT COUNT(*) FROM likes_usage WHERE user_id = ? AND timestamp >= ?",
-        (user_id, today_start.isoformat())
-    )
-    row = await cursor.fetchone()
-    return row[0] if row else 0
+    count = await db.count_likes_today(user_id, today_start.isoformat())
+    return count
 
 
 async def send_like_with_guest(guest: dict, target_uid: str, semaphore: asyncio.Semaphore) -> bool:
@@ -104,6 +98,7 @@ async def send_like_with_guest(guest: dict, target_uid: str, semaphore: asyncio.
 @user_exists
 async def likes_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handle /likes <uid> command - Send likes to Free Fire IND server UID"""
+    db = context.bot_data.get("db")
     user_id = update.effective_user.id
 
     # Check if UID was provided
@@ -125,23 +120,20 @@ async def likes_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("❌ Invalid UID! UID must be numeric.")
         return
 
-    db = await get_db()
-
     # Check user balance
-    cursor = await db.execute("SELECT balance FROM users WHERE user_id = ?", (user_id,))
-    user_data = await cursor.fetchone()
+    user = await db.get_user(user_id)
 
-    if not user_data or user_data[0] < LIKES_COST:
+    if not user or user['balance'] < LIKES_COST:
         await update.message.reply_text(
             f"❌ Insufficient balance!\n\n"
             f"💰 Required: {LIKES_COST} coins\n"
-            f"💳 Your balance: {user_data[0] if user_data else 0} coins\n\n"
+            f"💳 Your balance: {user['balance'] if user else 0} coins\n\n"
             "Use /buy to purchase coins."
         )
         return
 
     # Check daily limit
-    today_requests = await get_user_likes_today(user_id)
+    today_requests = await get_user_likes_today(db, user_id)
     if today_requests >= DAILY_LIMIT:
         await update.message.reply_text(
             f"❌ Daily limit reached!\n\n"
@@ -218,25 +210,17 @@ async def likes_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         likes_added = likes_after - likes_before
 
         # Deduct coins ONLY after successful send
-        new_balance = user_data[0] - LIKES_COST
-        await db.execute(
-            "UPDATE users SET balance = ? WHERE user_id = ?",
-            (new_balance, user_id)
-        )
+        new_balance = user['balance'] - LIKES_COST
+        await db.update_balance(user_id, -LIKES_COST)
 
         # Record transaction
-        await db.execute(
-            "INSERT INTO transactions (user_id, type, amount, description, timestamp) VALUES (?, ?, ?, ?, ?)",
-            (user_id, "likes", -LIKES_COST, f"Sent {successful_likes} likes to UID {target_uid}", datetime.now().isoformat())
+        await db.add_transaction(
+            user_id, "likes", -LIKES_COST,
+            f"Sent {successful_likes} likes to UID {target_uid}"
         )
 
         # Record likes usage
-        await db.execute(
-            "INSERT INTO likes_usage (user_id, uid, likes_sent, coins_spent, timestamp) VALUES (?, ?, ?, ?, ?)",
-            (user_id, target_uid, successful_likes, LIKES_COST, datetime.now().isoformat())
-        )
-
-        await db.commit()
+        await db.add_likes_usage(user_id, target_uid, successful_likes, LIKES_COST)
 
         # Send success message
         current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -270,10 +254,11 @@ async def likes_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 @user_exists
 async def likestatus_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handle /likestatus command - Show remaining likes for today"""
+    db = context.bot_data.get("db")
     user_id = update.effective_user.id
 
     # Get today's usage
-    today_requests = await get_user_likes_today(user_id)
+    today_requests = await get_user_likes_today(db, user_id)
     requests_left = DAILY_LIMIT - today_requests
 
     # Calculate time until reset
@@ -299,15 +284,10 @@ async def likestatus_command(update: Update, context: ContextTypes.DEFAULT_TYPE)
 @user_exists
 async def likehistory_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handle /likehistory command - Show last 5 like requests"""
+    db = context.bot_data.get("db")
     user_id = update.effective_user.id
-    db = await get_db()
 
-    cursor = await db.execute(
-        "SELECT uid, likes_sent, coins_spent, timestamp FROM likes_usage "
-        "WHERE user_id = ? ORDER BY timestamp DESC LIMIT 5",
-        (user_id,)
-    )
-    history = await cursor.fetchall()
+    history = await db.get_likes_history(user_id, limit=5)
 
     if not history:
         await update.message.reply_text(
