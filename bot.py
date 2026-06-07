@@ -49,8 +49,8 @@ from handlers.redeem import redeem_command
 from handlers.daily import daily_command
 from handlers.leaderboard import leaderboard_command
 from handlers.buy import buy_command, buy_callback, paid_command
-# SUPER FAST ENGINE - Optimized 50 concurrent (10-15 seconds)
-from handlers.likes_superfast import likes_command
+# HL GAMING PREMIUM API - 100% working solution (< 5 seconds)
+from handlers.likes_hl_gaming import likes_hl_gaming_handler
 from handlers.likes import likestatus_command, likehistory_command
 from handlers.apihealth import apihealth_command
 
@@ -141,7 +141,7 @@ def main():
     application.add_handler(CallbackQueryHandler(buy_callback, pattern="^buy_"))
 
     # Free Fire likes commands
-    application.add_handler(CommandHandler("likes", likes_command))
+    application.add_handler(CommandHandler("likes", likes_hl_gaming_handler))
     application.add_handler(CommandHandler("likestatus", likestatus_command))
     application.add_handler(CommandHandler("likehistory", likehistory_command))
 

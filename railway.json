@@ -20,6 +20,14 @@
     "UPI_ID": {
       "description": "UPI ID for payments",
       "default": "rsamofflceprv.ldt@fam"
+    },
+    "HL_GAMING_USERUID": {
+      "description": "HL Gaming Developer UID",
+      "default": "txnuOflAvIQxwFsfZ8GkTygDYcg2"
+    },
+    "HL_GAMING_API_KEY": {
+      "description": "HL Gaming API Key",
+      "default": "pLtSopffOs6gbtxbfbYY7uCF6hWAcv"
     }
   }
 }
