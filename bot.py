@@ -49,8 +49,8 @@ from handlers.redeem import redeem_command
 from handlers.daily import daily_command
 from handlers.leaderboard import leaderboard_command
 from handlers.buy import buy_command, buy_callback, paid_command
-# Use simple direct API method instead of auth server
-from handlers.likes_simple import likes_command
+# Use REST API method (simplest approach - no protobuf, no auth complexity)
+from handlers.likes_rest import likes_command
 from handlers.likes import (
     likestatus_command,
     likehistory_command,
