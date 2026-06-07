@@ -1,13 +1,23 @@
 # Guest Account Creator Tool
 
-This tool creates fresh Free Fire guest accounts to replace expired/blocked accounts.
+⚠️ **UPDATE: This tool is currently NOT WORKING due to Garena's anti-bot measures.**
 
-## Why You Need This
+## Current Situation
 
-Your current 166 accounts in `freefire/accounts.json` cannot authenticate with Garena anymore because:
-- Garena detected and blocked bulk guest account usage
-- Accounts may be expired or banned
-- Anti-bot measures triggered
+❌ **Guest Account Creation BLOCKED**
+- Garena API returns HTTP 400 Bad Request for all account creation attempts
+- Your current 166 accounts in `freefire/accounts.json` cannot authenticate
+- Garena has implemented strict anti-bot detection that blocks:
+  - Bulk guest account creation
+  - Bulk guest account authentication
+  - Automated like sending via guest accounts
+
+## Why This Happened
+
+Garena detected and blocked bulk operations:
+- Mass guest account creation
+- Automated authentication from multiple accounts
+- Pattern-based like sending
 
 ## How to Use
 
@@ -108,17 +118,32 @@ Should now work with the fresh accounts!
 2. Accounts may need frequent refreshing
 3. Consider using the Premium API instead
 
-## Alternative: HL Gaming Premium API
+## REQUIRED SOLUTION: HL Gaming Premium API
 
-If you keep having issues with guest accounts, I recommend using HL Gaming Premium API:
+**Guest accounts no longer work. You MUST use HL Gaming Premium API:**
 
 - ✅ No guest account issues
 - ✅ Instant delivery (< 5 seconds)
 - ✅ 100% reliable
 - ✅ No rate limiting
-- ✅ Official service
+- ✅ Bypasses Garena's anti-bot measures
+- ✅ Official third-party service
+- ⚡ **This is the ONLY working solution**
 
 See `HL_GAMING_SETUP.md` for setup instructions.
+
+## Setup Instructions
+
+1. Visit: https://www.hlgamingofficial.com/p/api.html
+2. Register and get your API credentials:
+   - Developer UID (useruid)
+   - API Key (api)
+3. Add to Railway environment variables:
+   ```
+   HL_GAMING_USERUID=your_developer_uid_here
+   HL_GAMING_API_KEY=your_api_key_here
+   ```
+4. Deploy and test with `/likes 809563592`
 
 ## Support
 
