@@ -17,6 +17,7 @@ import asyncio
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(__file__)), 'freefire'))
 
 from optimized_likes_engine import send_likes_super_fast, get_player_info_fast
+from working_player_api import get_real_player_name
 
 logger = logging.getLogger(__name__)
 
@@ -90,8 +91,8 @@ async def likes_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "⏳ Fetching player info..."
         )
 
-        # Get player info - FAST
-        player_info = await get_player_info_fast(target_uid)
+        # Get REAL player info with multiple fallbacks
+        player_info = await get_real_player_name(target_uid)
         player_name = player_info.get("name", f"FF-{target_uid[-6:]}")
         likes_before = player_info.get("likes", 0)
         level = player_info.get("level", 1)
@@ -135,18 +136,24 @@ async def likes_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if likes_sent == 0:
             await msg.edit_text(
                 "⚠️ No likes sent!\n\n"
-                "All guest accounts failed to authenticate.\n"
-                "This may be temporary.\n\n"
-                "💡 Try again in 10-15 minutes\n\n"
+                "❌ All 100 guest accounts failed to authenticate with Garena.\n\n"
+                "Possible causes:\n"
+                "• Garena is blocking bulk guest account logins\n"
+                "• Guest accounts may be expired/banned\n"
+                "• Garena API temporary rate limiting\n\n"
+                "🔧 Admin needs to:\n"
+                "1. Refresh guest accounts in accounts.json\n"
+                "2. OR setup HL Gaming Premium API key\n\n"
                 "💰 No coins deducted."
             )
+            logger.error(f"CRITICAL: All 100 guest accounts failed authentication for UID {target_uid}")
             return
 
         # Wait for server sync
         await asyncio.sleep(8)
 
-        # Get updated info
-        player_after = await get_player_info_fast(target_uid)
+        # Get updated info with REAL API
+        player_after = await get_real_player_name(target_uid)
         likes_after = player_after.get("likes", likes_before + likes_sent)
         likes_added = max(likes_after - likes_before, likes_sent)
 
