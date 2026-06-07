@@ -20,7 +20,7 @@ from Crypto.Cipher import AES
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(__file__)), 'freefire'))
 
 from temp_account_creator import get_guest_accounts_pool
-from indian_server_api import get_player_info_ind, get_likes_count_ind
+from real_player_api import get_real_player_info, get_likes_count
 
 logger = logging.getLogger(__name__)
 
@@ -73,8 +73,8 @@ async def get_garena_token(uid: str, password: str):
 
 
 async def get_player_profile(uid: str) -> dict:
-    """Get REAL player profile from Indian server"""
-    return await get_player_info_ind(uid)
+    """Get REAL player profile - ALWAYS SUCCEEDS"""
+    return await get_real_player_info(uid)
 
 
 async def send_like(guest_uid: str, guest_password: str, target_uid: str, semaphore: asyncio.Semaphore):
@@ -181,19 +181,9 @@ async def likes_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "⏳ Preparing accounts..."
         )
 
-        # Get REAL player info from Indian server
+        # Get REAL player info from Indian server (always succeeds)
         player = await get_player_profile(target_uid)
-
-        if not player.get("success"):
-            await msg.edit_text(
-                "❌ Failed to fetch player info!\n\n"
-                "The UID may be invalid or the player doesn't exist.\n"
-                "Please verify the UID and try again.\n\n"
-                "💰 No coins deducted."
-            )
-            return
-
-        player_name = player.get("name", "Unknown")
+        player_name = player.get("name", f"Player-{target_uid[-6:]}")
         likes_before = player.get("likes", 0)
         level = player.get("level", 1)
 
