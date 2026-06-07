@@ -20,6 +20,7 @@ from Crypto.Cipher import AES
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(__file__)), 'freefire'))
 
 from temp_account_creator import get_guest_accounts_pool
+from indian_server_api import get_player_info_ind, get_likes_count_ind
 
 logger = logging.getLogger(__name__)
 
@@ -72,12 +73,8 @@ async def get_garena_token(uid: str, password: str):
 
 
 async def get_player_profile(uid: str) -> dict:
-    """Get player profile - simple version"""
-    return {
-        "success": True,
-        "name": f"Player-{uid[-4:]}",
-        "likes": 0
-    }
+    """Get REAL player profile from Indian server"""
+    return await get_player_info_ind(uid)
 
 
 async def send_like(guest_uid: str, guest_password: str, target_uid: str, semaphore: asyncio.Semaphore):
@@ -184,15 +181,27 @@ async def likes_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "⏳ Preparing accounts..."
         )
 
-        # Get player info
+        # Get REAL player info from Indian server
         player = await get_player_profile(target_uid)
+
+        if not player.get("success"):
+            await msg.edit_text(
+                "❌ Failed to fetch player info!\n\n"
+                "The UID may be invalid or the player doesn't exist.\n"
+                "Please verify the UID and try again.\n\n"
+                "💰 No coins deducted."
+            )
+            return
+
         player_name = player.get("name", "Unknown")
         likes_before = player.get("likes", 0)
+        level = player.get("level", 1)
 
         await msg.edit_text(
-            f"✅ Ready!\n\n"
-            f"👤 Player: {player_name}\n"
+            f"✅ Player Found!\n\n"
+            f"👤 Player Name: {player_name}\n"
             f"🆔 UID: {target_uid}\n"
+            f"⭐ Level: {level}\n"
             f"❤️ Current Likes: {likes_before:,}\n\n"
             f"🔧 Creating {LIKES_TO_SEND} temp accounts...\n"
             "⏳ This may take 1-2 minutes..."
@@ -214,10 +223,12 @@ async def likes_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             return
 
         await msg.edit_text(
-            f"✅ Accounts ready!\n\n"
-            f"👤 Player: {player_name}\n"
-            f"🆔 UID: {target_uid}\n\n"
-            f"🚀 Sending {len(guest_accounts)} likes...\n"
+            f"✅ Accounts Ready!\n\n"
+            f"👤 Player Name: {player_name}\n"
+            f"🆔 UID: {target_uid}\n"
+            f"⭐ Level: {level}\n"
+            f"❤️ Likes Before: {likes_before:,}\n\n"
+            f"🚀 Sending {len(guest_accounts)} likes from Indian server...\n"
             "⏳ This takes 30-60 seconds..."
         )
 
@@ -239,13 +250,13 @@ async def likes_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             )
             return
 
-        # Wait for likes to register
-        await asyncio.sleep(5)
+        # Wait for likes to register on server
+        await asyncio.sleep(8)
 
-        # Get updated profile
+        # Get updated profile from Indian server
         player_after = await get_player_profile(target_uid)
         likes_after = player_after.get("likes", likes_before + successful)
-        likes_added = likes_after - likes_before
+        likes_added = max(likes_after - likes_before, successful)  # Use successful if server hasn't updated yet
 
         # Deduct coins
         new_balance = user['balance'] - LIKES_COST
@@ -256,22 +267,31 @@ async def likes_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         await db.add_likes_usage(user_id, target_uid, successful, LIKES_COST)
 
-        # Success
+        # Success - Show detailed results
         requests_left = DAILY_LIMIT - (today_requests + 1)
         failed = len(results) - successful
         success_rate = (successful / len(results)) * 100
 
-        success_msg = f"✅ Likes Sent!\n\n"
-        success_msg += f"👤 Player: {player_name}\n"
-        success_msg += f"🆔 UID: {target_uid}\n\n"
-        success_msg += f"❤️ Likes Before: {likes_before:,}\n"
-        success_msg += f"➕ Likes Added: +{likes_added:,}\n"
-        success_msg += f"💖 Likes After: {likes_after:,}\n\n"
-        success_msg += f"📊 Sent: {successful}/{len(results)} ({success_rate:.0f}%)\n\n"
-        success_msg += f"💰 Deducted: {LIKES_COST} coins\n"
-        success_msg += f"💳 Balance: {new_balance}\n"
-        success_msg += f"📅 Requests left: {requests_left}/{DAILY_LIMIT}\n\n"
-        success_msg += f"✨ Refresh Free Fire to see likes!"
+        success_msg = f"✅ Likes Successfully Sent!\n\n"
+        success_msg += f"━━━━━━━━━━━━━━━━━━━━\n"
+        success_msg += f"👤 Player Name: {player_name}\n"
+        success_msg += f"🆔 UID: {target_uid}\n"
+        success_msg += f"⭐ Level: {level}\n"
+        success_msg += f"━━━━━━━━━━━━━━━━━━━━\n\n"
+        success_msg += f"📊 Likes Summary:\n"
+        success_msg += f"   ❤️ Before: {likes_before:,}\n"
+        success_msg += f"   ➕ Added: +{likes_added:,}\n"
+        success_msg += f"   💖 After: {likes_after:,}\n\n"
+        success_msg += f"🚀 Delivery Report:\n"
+        success_msg += f"   ✅ Successful: {successful}\n"
+        success_msg += f"   ❌ Failed: {failed}\n"
+        success_msg += f"   📈 Success Rate: {success_rate:.0f}%\n\n"
+        success_msg += f"💰 Transaction:\n"
+        success_msg += f"   Deducted: -{LIKES_COST} coins\n"
+        success_msg += f"   New Balance: {new_balance} coins\n\n"
+        success_msg += f"📅 Requests left today: {requests_left}/{DAILY_LIMIT}\n\n"
+        success_msg += f"✨ Refresh Free Fire app to see the likes!\n"
+        success_msg += f"🇮🇳 Sent from Indian Server"
 
         await msg.edit_text(success_msg)
         logger.info(f"✅ Sent {successful} likes to {target_uid} (auto-created accounts)")
