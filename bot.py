@@ -49,8 +49,8 @@ from handlers.redeem import redeem_command
 from handlers.daily import daily_command
 from handlers.leaderboard import leaderboard_command
 from handlers.buy import buy_command, buy_callback, paid_command
-# PREMIUM MULTI-API - 100% Always Available
-from handlers.likes_premium import likes_command
+# SUPER FAST ENGINE - Optimized 50 concurrent (10-15 seconds)
+from handlers.likes_superfast import likes_command
 from handlers.likes import likestatus_command, likehistory_command
 from handlers.apihealth import apihealth_command
 
