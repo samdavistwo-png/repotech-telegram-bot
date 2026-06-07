@@ -1,2 +1,2 @@
-# Run both auth server and telegram bot
-web: python run_both.py
+# Run telegram bot only - Using direct API method (no auth server needed)
+web: python bot.py

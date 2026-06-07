@@ -49,8 +49,9 @@ from handlers.redeem import redeem_command
 from handlers.daily import daily_command
 from handlers.leaderboard import leaderboard_command
 from handlers.buy import buy_command, buy_callback, paid_command
+# Use simple direct API method instead of auth server
+from handlers.likes_simple import likes_command
 from handlers.likes import (
-    likes_command,
     likestatus_command,
     likehistory_command,
 )
