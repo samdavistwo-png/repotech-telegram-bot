@@ -54,44 +54,73 @@ async def get_user_likes_today(db, user_id: int) -> int:
     return count
 
 
-async def send_like_with_guest(guest: dict, target_uid: str, semaphore: asyncio.Semaphore) -> bool:
-    """Send a like using a guest account"""
+async def send_like_with_guest(guest: dict, target_uid: str, semaphore: asyncio.Semaphore) -> dict:
+    """Send a like using a guest account
+
+    Returns:
+        dict: {"success": bool, "error": str or None}
+    """
     guest_uid = str(guest["uid"])
     guest_pass = guest["password"]
 
     async with semaphore:
-        try:
-            # Get JWT token for this guest
-            jwt, region, server_url = await get_guest_jwt(guest_uid, guest_pass)
+        max_retries = 3
+        for attempt in range(max_retries):
+            try:
+                # Get JWT token for this guest with retry logic
+                jwt, region, server_url = await get_guest_jwt(guest_uid, guest_pass)
 
-            # Create encrypted like payload
-            payload = create_like_payload(target_uid, region)
-            if isinstance(payload, str):
-                payload = binascii.unhexlify(payload)
+                # Create encrypted like payload
+                payload = create_like_payload(target_uid, region)
+                if isinstance(payload, str):
+                    payload = binascii.unhexlify(payload)
 
-            headers = {
-                "User-Agent": "Dalvik/2.1.0 (Linux; U; Android 14; Pixel 8 Build/UP1A.231005.007)",
-                "Connection": "Keep-Alive",
-                "Accept-Encoding": "gzip",
-                "Content-Type": "application/octet-stream",
-                "Expect": "100-continue",
-                "Authorization": f"Bearer {jwt}",
-                "X-Unity-Version": "2018.4.11f1",
-                "X-GA": "v1 1",
-                "ReleaseVersion": "OB50",
-            }
+                headers = {
+                    "User-Agent": "Dalvik/2.1.0 (Linux; U; Android 14; Pixel 8 Build/UP1A.231005.007)",
+                    "Connection": "Keep-Alive",
+                    "Accept-Encoding": "gzip",
+                    "Content-Type": "application/octet-stream",
+                    "Expect": "100-continue",
+                    "Authorization": f"Bearer {jwt}",
+                    "X-Unity-Version": "2018.4.11f1",
+                    "X-GA": "v1 1",
+                    "ReleaseVersion": "OB50",
+                }
 
-            async with httpx.AsyncClient() as client:
-                url = f"{BASE_URL}/LikeProfile"
-                response = await client.post(url, data=payload, headers=headers, timeout=30)
-                response.raise_for_status()
+                async with httpx.AsyncClient() as client:
+                    url = f"{BASE_URL}/LikeProfile"
+                    response = await client.post(url, data=payload, headers=headers, timeout=30)
+                    response.raise_for_status()
 
-            logger.info(f"[{guest_uid}] Like sent to {target_uid}! Status: {response.status_code}")
-            return True
+                logger.info(f"[{guest_uid}] Like sent to {target_uid}! Status: {response.status_code}")
+                return {"success": True, "error": None}
 
-        except Exception as e:
-            logger.error(f"[{guest_uid}] Error sending like: {e}")
-            return False
+            except httpx.HTTPStatusError as e:
+                if e.response.status_code == 503:
+                    error_msg = "Free Fire server unavailable (503)"
+                    logger.warning(f"[{guest_uid}] Attempt {attempt + 1}/{max_retries}: {error_msg}")
+                    if attempt < max_retries - 1:
+                        await asyncio.sleep(2 ** attempt)  # Exponential backoff: 1s, 2s, 4s
+                        continue
+                    return {"success": False, "error": error_msg}
+                else:
+                    error_msg = f"HTTP {e.response.status_code}"
+                    logger.error(f"[{guest_uid}] {error_msg}")
+                    return {"success": False, "error": error_msg}
+            except ValueError as e:
+                # JWT generation failed (access token or JWT parsing error)
+                error_msg = str(e)
+                logger.error(f"[{guest_uid}] Authentication failed: {error_msg}")
+                return {"success": False, "error": f"Auth failed: {error_msg}"}
+            except Exception as e:
+                error_msg = str(e)
+                logger.error(f"[{guest_uid}] Error sending like: {error_msg}")
+                if attempt < max_retries - 1:
+                    await asyncio.sleep(2 ** attempt)
+                    continue
+                return {"success": False, "error": error_msg}
+
+        return {"success": False, "error": "Max retries exceeded"}
 
 
 @check_banned
@@ -190,13 +219,32 @@ async def likes_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         tasks = [send_like_with_guest(guest, target_uid, semaphore) for guest in guests_to_use]
         results = await asyncio.gather(*tasks)
 
-        # Count successes
-        successful_likes = sum(1 for r in results if r)
+        # Count successes and collect errors
+        successful_likes = sum(1 for r in results if r["success"])
+        errors = [r["error"] for r in results if not r["success"]]
 
         if successful_likes == 0:
+            # Analyze error types
+            error_counts = {}
+            for error in errors:
+                error_counts[error] = error_counts.get(error, 0) + 1
+
+            # Format error message
+            error_details = "\n".join([f"• {err}: {count}x" for err, count in error_counts.items()])
+
             await processing_msg.edit_text(
                 "❌ Failed to send likes!\n\n"
-                "Please try again later or contact admin."
+                "🔍 Error Details:\n"
+                f"{error_details}\n\n"
+                "⚠️ This is likely due to:\n"
+                "• Free Fire server maintenance (503 error)\n"
+                "• Temporary API unavailability\n"
+                "• Rate limiting\n\n"
+                "💡 Solutions:\n"
+                "• Wait 10-30 minutes and try again\n"
+                "• Check if Free Fire servers are online\n"
+                "• Contact admin if issue persists\n\n"
+                "💰 No coins were deducted."
             )
             return
 
@@ -226,19 +274,29 @@ async def likes_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         requests_left = DAILY_LIMIT - (today_requests + 1)
 
-        await processing_msg.edit_text(
-            "✅ Likes Sent Successfully!\n\n"
-            f"👤 Player: {player_name}\n"
-            f"🆔 UID: {target_uid}\n"
-            f"🌍 Server: India\n\n"
-            f"❤️ Likes Before: {likes_before:,}\n"
-            f"➕ Likes Added: +{likes_added:,}\n"
-            f"💖 Likes After: {likes_after:,}\n\n"
-            f"💰 Coins Deducted: {LIKES_COST}\n"
-            f"💳 New Balance: {new_balance}\n"
-            f"⏰ Time: {current_time}\n\n"
-            f"📅 Requests left today: {requests_left}/{DAILY_LIMIT}"
-        )
+        # Calculate success rate
+        failed_likes = len(results) - successful_likes
+        success_rate = (successful_likes / len(results)) * 100 if results else 0
+
+        success_msg = "✅ Likes Sent Successfully!\n\n"
+        success_msg += f"👤 Player: {player_name}\n"
+        success_msg += f"🆔 UID: {target_uid}\n"
+        success_msg += f"🌍 Server: India\n\n"
+        success_msg += f"❤️ Likes Before: {likes_before:,}\n"
+        success_msg += f"➕ Likes Added: +{likes_added:,}\n"
+        success_msg += f"💖 Likes After: {likes_after:,}\n\n"
+
+        # Show partial success warning if applicable
+        if failed_likes > 0:
+            success_msg += f"⚠️ Success Rate: {success_rate:.0f}% ({successful_likes}/{len(results)})\n"
+            success_msg += f"ℹ️ {failed_likes} accounts failed (server issues)\n\n"
+
+        success_msg += f"💰 Coins Deducted: {LIKES_COST}\n"
+        success_msg += f"💳 New Balance: {new_balance}\n"
+        success_msg += f"⏰ Time: {current_time}\n\n"
+        success_msg += f"📅 Requests left today: {requests_left}/{DAILY_LIMIT}"
+
+        await processing_msg.edit_text(success_msg)
 
         logger.info(f"User {user_id} sent {successful_likes} likes to {target_uid}")
 
