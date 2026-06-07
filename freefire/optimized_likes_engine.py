@@ -79,6 +79,7 @@ async def send_like_optimized(guest_uid: str, guest_password: str, target_uid: s
             jwt_token = await get_jwt_token(guest_uid, guest_password)
 
             if not jwt_token:
+                logger.debug(f"Failed to get JWT for guest {guest_uid}")
                 return False
 
             # Build encrypted protobuf payload
@@ -161,12 +162,12 @@ async def send_likes_super_fast(target_uid: str, count: int = 100) -> Dict:
         }
 
     except Exception as e:
-        logger.error(f"Optimized engine error: {e}")
+        logger.error(f"Optimized engine error: {e}", exc_info=True)
         return {
             "success": False,
             "sent": 0,
             "failed": count,
-            "error": str(e)
+            "error": f"{type(e).__name__}: {str(e)}"
         }
 
 

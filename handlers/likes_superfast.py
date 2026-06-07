@@ -112,9 +112,18 @@ async def likes_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         if not result.get("success"):
             error_msg = result.get("error", "Unknown error")
+            sent = result.get("sent", 0)
+            failed = result.get("failed", 0)
+
+            logger.error(f"Likes failed - Sent: {sent}, Failed: {failed}, Error: {error_msg}")
+
             await msg.edit_text(
                 f"❌ Failed to send likes!\n\n"
                 f"Details: {error_msg}\n\n"
+                f"Debug Info:\n"
+                f"• Attempted: {sent + failed}\n"
+                f"• Successful: {sent}\n"
+                f"• Failed: {failed}\n\n"
                 f"💡 Try again in a few minutes\n\n"
                 f"💰 No coins deducted."
             )
