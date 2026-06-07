@@ -49,8 +49,8 @@ from handlers.redeem import redeem_command
 from handlers.daily import daily_command
 from handlers.leaderboard import leaderboard_command
 from handlers.buy import buy_command, buy_callback, paid_command
-# WORKING FINAL version - 100% success rate with real player names
-from handlers.likes_working_final import likes_command
+# EXTERNAL SERVICE - Uses third-party API (NO guest account creation)
+from handlers.likes_external_final import likes_command
 from handlers.likes import (
     likestatus_command,
     likehistory_command,
