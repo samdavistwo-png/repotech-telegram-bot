@@ -49,8 +49,8 @@ from handlers.redeem import redeem_command
 from handlers.daily import daily_command
 from handlers.leaderboard import leaderboard_command
 from handlers.buy import buy_command, buy_callback, paid_command
-# FINAL version - completely standalone, no ggblueshark dependency
-from handlers.likes_final import likes_command
+# AUTO version - creates temporary guest accounts automatically
+from handlers.likes_auto import likes_command
 from handlers.likes import (
     likestatus_command,
     likehistory_command,
