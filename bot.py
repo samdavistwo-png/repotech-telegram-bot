@@ -53,6 +53,7 @@ from handlers.likes import (
     likestatus_command,
     likehistory_command,
 )
+from handlers.apihealth import apihealth_command
 
 # Import keep alive
 from keep_alive import keep_alive
@@ -139,10 +140,13 @@ def main():
     application.add_handler(CommandHandler("paid", paid_command))
     application.add_handler(CallbackQueryHandler(buy_callback, pattern="^buy_"))
 
-    # Free Fire likes commands (placeholder)
+    # Free Fire likes commands
     application.add_handler(CommandHandler("likes", likes_command))
     application.add_handler(CommandHandler("likestatus", likestatus_command))
     application.add_handler(CommandHandler("likehistory", likehistory_command))
+
+    # API Health Check command (admin only)
+    application.add_handler(CommandHandler("apihealth", apihealth_command))
 
     # Error handler
     application.add_error_handler(error_handler)

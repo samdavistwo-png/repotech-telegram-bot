@@ -46,6 +46,9 @@ async def admin_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 📢 COMMUNICATION:
 /broadcast <message> - Send message to all users
 
+🏥 API MONITORING:
+/apihealth - Check Free Fire API endpoints status
+
 ⚠️ Use these commands responsibly!
 """
     await update.message.reply_text(admin_text)
