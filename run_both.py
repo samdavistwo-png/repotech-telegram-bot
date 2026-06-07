@@ -9,6 +9,8 @@ import os
 
 def main():
     print("Starting both Auth Server and Telegram Bot...")
+    print("Auth server will run on port 8001")
+    print("Bot will connect to localhost:8001 for authentication")
 
     # Start auth server in background
     print("Starting auth server on port 8001...")
