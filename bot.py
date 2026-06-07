@@ -49,12 +49,8 @@ from handlers.redeem import redeem_command
 from handlers.daily import daily_command
 from handlers.leaderboard import leaderboard_command
 from handlers.buy import buy_command, buy_callback, paid_command
-# EXTERNAL SERVICE - Uses third-party API (NO guest account creation)
-from handlers.likes_external_final import likes_command
-from handlers.likes import (
-    likestatus_command,
-    likehistory_command,
-)
+# MANUAL PROCESSING - Admin processes requests manually
+from handlers.likes_manual import likes_command, likestatus_command, likehistory_command
 from handlers.apihealth import apihealth_command
 
 # Import keep alive
