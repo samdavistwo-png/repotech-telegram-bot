@@ -48,6 +48,7 @@ async def admin_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 🏥 API MONITORING:
 /apihealth - Check Free Fire API endpoints status
+/sysinfo - Show system and deployment information
 
 ⚠️ Use these commands responsibly!
 """
@@ -625,5 +626,62 @@ async def userinfo_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         referrer = await db.get_user(user['referred_by'])
         if referrer:
             info_text += f"🔗 Referred by: @{referrer['username']} ({user['referred_by']})\n"
+
+    await update.message.reply_text(info_text)
+
+
+@admin_only
+async def sysinfo_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Handle /sysinfo command - Show system and deployment information"""
+    import platform
+    import sys
+    import os
+    from datetime import datetime
+
+    # Get system information
+    python_version = sys.version.split()[0]
+    platform_info = platform.platform()
+
+    # Check if auth server code is present
+    auth_server_exists = os.path.exists("auth_server.py")
+    run_both_exists = os.path.exists("run_both.py")
+
+    # Try to detect if we're using localhost auth
+    get_jwt_path = "freefire/get_jwt.py"
+    using_localhost = False
+    if os.path.exists(get_jwt_path):
+        with open(get_jwt_path, 'r') as f:
+            content = f.read()
+            using_localhost = "localhost:8001" in content
+
+    # Get current git commit (if available)
+    git_commit = "Unknown"
+    try:
+        import subprocess
+        result = subprocess.run(['git', 'rev-parse', '--short', 'HEAD'],
+                              capture_output=True, text=True, timeout=2)
+        if result.returncode == 0:
+            git_commit = result.stdout.strip()
+    except:
+        pass
+
+    info_text = f"""
+🖥️ System Information
+
+📊 Platform: {platform_info}
+🐍 Python: {python_version}
+🔖 Git Commit: {git_commit}
+⏰ Current Time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
+
+🔧 Auth Server Status:
+• auth_server.py: {'✅ Present' if auth_server_exists else '❌ Missing'}
+• run_both.py: {'✅ Present' if run_both_exists else '❌ Missing'}
+• Using localhost:8001: {'✅ YES' if using_localhost else '❌ NO (using ggblueshark)'}
+
+💡 If "Using localhost:8001" shows NO, Railway is running old code.
+   Wait 3-5 minutes after git push for deployment to complete.
+
+📝 Test deployment with /likes command.
+"""
 
     await update.message.reply_text(info_text)

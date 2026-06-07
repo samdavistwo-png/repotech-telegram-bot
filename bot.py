@@ -37,6 +37,7 @@ from handlers.admin import (
     approve_command,
     reject_command,
     userinfo_command,
+    sysinfo_command,
 )
 from handlers.referral import (
     referral_command,
@@ -117,6 +118,7 @@ def main():
     application.add_handler(CommandHandler("approve", approve_command))
     application.add_handler(CommandHandler("reject", reject_command))
     application.add_handler(CommandHandler("userinfo", userinfo_command))
+    application.add_handler(CommandHandler("sysinfo", sysinfo_command))
 
     # Referral commands
     application.add_handler(CommandHandler("referral", referral_command))
