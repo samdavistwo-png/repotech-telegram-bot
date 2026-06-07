@@ -49,8 +49,8 @@ from handlers.redeem import redeem_command
 from handlers.daily import daily_command
 from handlers.leaderboard import leaderboard_command
 from handlers.buy import buy_command, buy_callback, paid_command
-# Use external service (most reliable - delegates all complexity to external API)
-from handlers.likes_external import likes_command
+# Use WORKING method - sends REAL likes using guest accounts
+from handlers.likes_working import likes_command
 from handlers.likes import (
     likestatus_command,
     likehistory_command,
