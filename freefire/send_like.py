@@ -77,7 +77,7 @@ async def like_with_guest(guest: dict, target_uid: str, BASE_URL: str, semaphore
                 "Authorization": f"Bearer {jwt}",
                 "X-Unity-Version": "2018.4.11f1",
                 "X-GA": "v1 1",
-                "ReleaseVersion": "OB51",
+                "ReleaseVersion": "OB53",
             }
 
             async with httpx.AsyncClient() as client:
