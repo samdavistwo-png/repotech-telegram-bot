@@ -6,14 +6,14 @@ HL Gaming Premium Likes Handler
 import logging
 from telegram import Update
 from telegram.ext import ContextTypes
+from utils.decorators import check_banned, user_exists
 import sys
 import os
 
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(__file__)), 'freefire'))
 
-from database import get_user_balance, update_user_balance
-from freefire.hl_gaming_player_api import get_player_info_hl_gaming
-from freefire.hl_gaming_likes_api import send_likes_hl_gaming
+from hl_gaming_player_api import get_player_info_hl_gaming
+from hl_gaming_likes_api import send_likes_hl_gaming
 
 logger = logging.getLogger(__name__)
 
@@ -21,6 +21,8 @@ LIKES_COST = 50  # 50 coins per 100 likes
 LIKES_AMOUNT = 100
 
 
+@check_banned
+@user_exists
 async def likes_hl_gaming_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """
     Handle /likes command with HL Gaming Premium API
@@ -28,6 +30,7 @@ async def likes_hl_gaming_handler(update: Update, context: ContextTypes.DEFAULT_
     Usage: /likes <uid>
     Cost: 50 coins for 100 likes
     """
+    db = context.bot_data.get("db")
     user_id = update.effective_user.id
 
     # Check if UID provided
@@ -54,7 +57,8 @@ async def likes_hl_gaming_handler(update: Update, context: ContextTypes.DEFAULT_
         return
 
     # Check user balance
-    balance = await get_user_balance(user_id)
+    user = await db.get_user(user_id)
+    balance = user['balance']
 
     if balance < LIKES_COST:
         await update.message.reply_text(
@@ -148,7 +152,7 @@ async def likes_hl_gaming_handler(update: Update, context: ContextTypes.DEFAULT_
         await msg.edit_text(player_text)
 
         # Deduct coins BEFORE sending likes
-        await update_user_balance(user_id, -LIKES_COST)
+        await db.update_balance(user_id, -LIKES_COST)
         logger.info(f"Deducted {LIKES_COST} coins from user {user_id}")
 
         # Send likes using HL Gaming API
@@ -185,7 +189,7 @@ async def likes_hl_gaming_handler(update: Update, context: ContextTypes.DEFAULT_
 
         else:
             # Likes sending failed - refund coins
-            await update_user_balance(user_id, LIKES_COST)
+            await db.update_balance(user_id, LIKES_COST)
             logger.info(f"Refunded {LIKES_COST} coins to user {user_id} - likes sending failed")
 
             error_message = result.get('message', 'Unknown error')
