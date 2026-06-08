@@ -155,7 +155,7 @@ def main():
     keep_alive()
 
     # Start bot
-    logger.info("Bot started successfully! Press Ctrl+C to stop.")
+    logger.info("RepotechBot started successfully with HL Gaming API! Press Ctrl+C to stop.")
     application.run_polling(allowed_updates=["message", "callback_query"])
 
 
