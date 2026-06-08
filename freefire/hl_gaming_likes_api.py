@@ -40,7 +40,7 @@ def send_likes_hl_gaming(target_uid: str, amount: int = 100, region: str = "ind"
 
     try:
         params = {
-            'targetUid': target_uid,
+            'ff_uid': target_uid,  # Fixed: API expects 'ff_uid' not 'targetUid'
             'amount': str(amount),
             'region': region,
             'useruid': USER_UID,
@@ -83,11 +83,27 @@ def send_likes_hl_gaming(target_uid: str, amount: int = 100, region: str = "ind"
         error_body = e.read().decode('utf-8') if e.fp else ''
         logger.error(f"HL Gaming Likes API HTTP Error {e.code}: {e.reason} - {error_body}")
 
+        # Try to parse error response for better error messages
+        try:
+            error_data = json.loads(error_body)
+            error_message = error_data.get('message', e.reason)
+            error_code = error_data.get('error_code', 'UNKNOWN')
+
+            # Check for plan limitation errors
+            if error_code == 'AUTH_FAILED' or 'not available for this plan' in error_message.lower():
+                return {
+                    'success': False,
+                    'error': 'API_PLAN_LIMITATION',
+                    'message': 'HL Gaming Likes API not available in your subscription plan. Please upgrade at https://www.hlgamingofficial.com/p/api.html'
+                }
+        except:
+            pass
+
         if e.code == 403:
             return {
                 'success': False,
-                'error': 'INVALID_CREDENTIALS',
-                'message': 'Invalid HL Gaming API credentials'
+                'error': 'FORBIDDEN',
+                'message': 'Access denied. Check your HL Gaming API subscription plan or credentials at https://www.hlgamingofficial.com/p/api.html'
             }
         elif e.code == 429:
             return {
