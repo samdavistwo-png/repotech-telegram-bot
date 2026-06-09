@@ -1,5 +1,18 @@
 # RepotechBot - Telegram Coin Management Bot
 
+> ⚠️ **PROJECT STATUS: CLOSED** ⚠️
+>
+> **Date**: June 9, 2026
+>
+> The **Free Fire Likes Service** has been permanently discontinued due to Garena's OB51 patch update.
+> Level 2 accounts can no longer send likes, making the free service impossible to continue.
+>
+> **See [PROJECT_CLOSURE.md](PROJECT_CLOSURE.md) for complete details.**
+>
+> The core bot features (coins, referrals, daily rewards) remain functional, but Free Fire integration is non-operational.
+
+---
+
 [![Deploy on Railway](https://railway.app/button.svg)](https://railway.app/template/repotech-bot?referralCode=github)
 
 A comprehensive Telegram bot for coin management, referral system, daily rewards, and Free Fire services.
