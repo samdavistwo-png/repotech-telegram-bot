@@ -21,8 +21,9 @@ from typing import Dict, Tuple
 
 # Import from existing modules
 # OLD: from get_jwt import create_jwt  # Uses ggblueshark - BROKEN
-# NEW: Use direct OAuth method - bypasses ggblueshark completely
-from get_jwt_direct import create_jwt_direct as create_jwt
+# OLD: from get_jwt_direct import create_jwt_direct as create_jwt  # Direct OAuth only
+# NEW: Use fallback authentication - tries ggblueshark then falls back to OAuth
+from get_jwt_alt_servers import create_jwt
 from encrypt_like_body import create_like_payload
 
 logger = logging.getLogger(__name__)
