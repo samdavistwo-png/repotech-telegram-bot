@@ -20,7 +20,9 @@ from pathlib import Path
 from typing import Dict, Tuple
 
 # Import from existing modules
-from get_jwt import create_jwt
+# OLD: from get_jwt import create_jwt  # Uses ggblueshark - BROKEN
+# NEW: Use direct OAuth method - bypasses ggblueshark completely
+from get_jwt_direct import create_jwt_direct as create_jwt
 from encrypt_like_body import create_like_payload
 
 logger = logging.getLogger(__name__)

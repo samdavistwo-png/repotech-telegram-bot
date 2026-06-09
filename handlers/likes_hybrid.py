@@ -14,6 +14,7 @@ import os
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(__file__)), 'freefire'))
 
 from guest_likes_engine import send_likes_with_guests, get_available_guests
+from get_jwt_direct import check_oauth_endpoint
 from hl_gaming_player_api import get_player_info_hl_gaming
 from hl_gaming_likes_api import send_likes_hl_gaming
 from count_likes import GetAccountInformation
@@ -164,12 +165,32 @@ async def likes_hybrid_handler(update: Update, context: ContextTypes.DEFAULT_TYP
         # Re-check guest availability AFTER coin deduction (prevent double-spend race)
         available_guests = get_available_guests(target_uid)
 
-        # Decide which method to use
+        # Check if OAuth endpoint is accessible (required for guest method)
+        oauth_working = False
         if available_guests >= GUEST_THRESHOLD:
+            try:
+                oauth_working = await check_oauth_endpoint()
+                if not oauth_working:
+                    logger.warning("OAuth endpoint is DOWN - skipping guest method")
+            except Exception as e:
+                logger.error(f"Error checking OAuth endpoint: {e}")
+                oauth_working = False
+
+        # Decide which method to use
+        if available_guests >= GUEST_THRESHOLD and oauth_working:
             player_text += f"\n🎁 Trying Guest Accounts (Free Method)...\n⏳ Processing {min(available_guests, LIKES_AMOUNT)} available guests..."
             use_guest_first = True
         else:
-            player_text += f"\n⚡ Using HL Gaming Premium API...\n⏳ Processing..."
+            # Explain why not using guest method
+            if available_guests < GUEST_THRESHOLD:
+                player_text += f"\n⚡ Using HL Gaming Premium API...\n⏳ Processing..."
+            elif not oauth_working:
+                player_text += (
+                    f"\n⚠️ Authentication service temporarily unavailable\n"
+                    f"⚡ Using HL Gaming Premium fallback...\n⏳ Processing..."
+                )
+            else:
+                player_text += f"\n⚡ Using HL Gaming Premium API...\n⏳ Processing..."
             use_guest_first = False
 
         await msg.edit_text(player_text)

@@ -15,9 +15,11 @@ logger = logging.getLogger(__name__)
 
 # API endpoints to monitor
 ENDPOINTS = {
-    "Garena OAuth": "https://ffmconnect.live.gop.garenanow.com/oauth/guest/token/grant",
-    "Free Fire Login (ggblueshark)": "https://loginbp.ggblueshark.com/MajorLogin",
+    "Garena OAuth (Direct Method)": "https://ffmconnect.live.gop.garenanow.com/oauth/guest/token/grant",
+    "Free Fire Login (ggblueshark) - LEGACY": "https://loginbp.ggblueshark.com/MajorLogin",
     "Free Fire IND Server": "https://client.ind.freefiremobile.com/LikeProfile",
+    "Free Fire US Server": "https://client.us.freefiremobile.com/LikeProfile",
+    "Free Fire SG Server": "https://client.sg.freefiremobile.com/LikeProfile",
 }
 
 
@@ -38,6 +40,15 @@ async def check_endpoint(name: str, url: str, timeout: int = 5) -> dict:
                     url,
                     data=b"test",  # Dummy data
                     headers={"Content-Type": "application/octet-stream"},
+                    timeout=timeout,
+                    follow_redirects=False
+                )
+            elif "oauth/guest/token/grant" in url:
+                # OAuth endpoint expects POST with form data
+                response = await client.post(
+                    url,
+                    data="uid=test&password=test&response_type=token&client_type=2&client_secret=2ee44819e9b4598845141067b281621874d0d5d7af9d8f7e00c1e54715b7d1e3&client_id=100067",
+                    headers={"Content-Type": "application/x-www-form-urlencoded"},
                     timeout=timeout,
                     follow_redirects=False
                 )
@@ -122,13 +133,25 @@ async def apihealth_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # Overall status
     all_online = all(r["status"].startswith("✅") for r in results)
-    critical_down = any("ggblueshark" in r["url"] and r["status"].startswith("❌") for r in results)
+    oauth_down = any("oauth/guest/token/grant" in r["url"] and r["status"].startswith("❌") for r in results)
+    ggblueshark_down = any("ggblueshark" in r["url"] and r["status"].startswith("❌") for r in results)
+    all_game_servers_down = all(
+        r["status"].startswith("❌") for r in results
+        if "freefiremobile.com" in r["url"]
+    )
 
     if all_online:
         message += "🟢 **Overall Status: ALL SYSTEMS OPERATIONAL**\n\n"
-    elif critical_down:
-        message += "🔴 **Overall Status: CRITICAL SERVICE DOWN**\n"
-        message += "⚠️ Likes command will not work until ggblueshark is back online.\n\n"
+    elif oauth_down and all_game_servers_down:
+        message += "🔴 **Overall Status: CRITICAL - ALL SERVICES DOWN**\n"
+        message += "⚠️ Both authentication and game servers are down.\n\n"
+    elif oauth_down:
+        message += "🔴 **Overall Status: CRITICAL - OAUTH DOWN**\n"
+        message += "⚠️ Guest likes will not work. HL Gaming fallback is active.\n\n"
+    elif ggblueshark_down and not oauth_down:
+        message += "🟡 **Overall Status: LEGACY SERVICE DOWN (OK)**\n"
+        message += "✅ ggblueshark is down, but Direct OAuth is working!\n"
+        message += "💡 Guest likes using new Direct OAuth method.\n\n"
     else:
         message += "🟡 **Overall Status: PARTIAL OUTAGE**\n\n"
 
@@ -148,23 +171,46 @@ async def apihealth_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # Recommendations
     message += "💡 **What This Means:**\n\n"
 
-    if critical_down:
+    if oauth_down and all_game_servers_down:
         message += (
-            "🔴 **ggblueshark Login Server is DOWN**\n"
-            "• /likes command will fail\n"
-            "• This is a third-party service outside our control\n"
-            "• Users won't be charged coins when it fails\n\n"
+            "🔴 **CRITICAL FAILURE**\n"
+            "• Both OAuth and game servers are down\n"
+            "• /likes command will not work at all\n"
+            "• System will fallback to HL Gaming only\n\n"
             "**Recommended Actions:**\n"
             "1. Wait 10-30 minutes and check again\n"
-            "2. Monitor this endpoint periodically\n"
-            "3. Consider implementing your own auth server\n"
-            "4. Notify users of temporary service disruption\n"
+            "2. All services are external, outside our control\n"
+            "3. Users won't be charged if service fails\n"
+        )
+    elif oauth_down:
+        message += (
+            "🔴 **OAuth Server is DOWN**\n"
+            "• Guest likes method will not work\n"
+            "• System will use HL Gaming fallback\n"
+            "• This is a Garena service outside our control\n\n"
+            "**Recommended Actions:**\n"
+            "1. Wait for Garena OAuth to recover\n"
+            "2. HL Gaming fallback is active\n"
+            "3. Users won't be charged if both methods fail\n"
+        )
+    elif ggblueshark_down and not oauth_down:
+        message += (
+            "✅ **SYSTEM WORKING (New Method)**\n"
+            "• ggblueshark is down, but that's OK!\n"
+            "• Bot now uses Direct OAuth method\n"
+            "• Guest likes work WITHOUT ggblueshark\n"
+            "• /likes command fully operational\n\n"
+            "**What Changed:**\n"
+            "• Old: Guest → ggblueshark → JWT → Like\n"
+            "• New: Guest → OAuth → JWT → Like (Direct)\n"
+            "• No dependency on ggblueshark anymore!\n"
         )
     elif all_online:
         message += (
             "✅ **All systems operational!**\n"
             "• /likes command should work normally\n"
-            "• All authentication flows are functional\n"
+            "• Direct OAuth method active\n"
+            "• HL Gaming fallback available\n"
             "• No action needed\n"
         )
     else:
