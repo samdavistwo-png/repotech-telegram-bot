@@ -106,15 +106,17 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 📊 Statistics:
 /leaderboard - Top 10 richest users
 
-🎮 Free Fire Services:
-/likes <uid> - Send Free Fire likes
-/likestatus - Check likes status
-/likehistory - View likes history
+⚠️ Free Fire Services (Temporarily Closed):
+/likes - Why likes service is closed
+/likestatus - Service status info
+/likehistory - Likes history (archived)
 
 ℹ️ Help:
 /help - Show all commands
 
 💎 Start earning coins and enjoy our services!
+
+🔴 Note: Free Fire likes service closed due to OB51 patch changes
 """
     await update.message.reply_text(welcome_text)
 
@@ -146,10 +148,10 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 📊 STATISTICS:
 /leaderboard - See top 10 richest users
 
-🎮 FREE FIRE SERVICES:
-/likes <uid> - Send Free Fire likes to a UID
-/likestatus - Check your likes sending status
-/likehistory - View your likes usage history
+⚠️ FREE FIRE SERVICES (TEMPORARILY CLOSED):
+/likes - Information about service closure
+/likestatus - Current service status
+/likehistory - View archived likes history
 
 ℹ️ SUPPORT:
 /help - Show this help message
@@ -160,6 +162,10 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 - Claim daily rewards every 24 hours
 - Check leaderboard to see top users
 - Use /buy to purchase more coins
+
+🔴 **Important Notice:**
+Free Fire likes service is temporarily closed due to Garena's OB51 patch.
+Level 2 accounts can no longer send likes. All other features work perfectly!
 
 Need assistance? Contact our support team!
 """

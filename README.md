@@ -1,15 +1,25 @@
 # RepotechBot - Telegram Coin Management Bot
 
-> ⚠️ **PROJECT STATUS: CLOSED** ⚠️
+> ⚠️ **FREE FIRE LIKES SERVICE: TEMPORARILY CLOSED** ⚠️
 >
-> **Date**: June 9, 2026
+> **Update**: June 9, 2026
 >
-> The **Free Fire Likes Service** has been permanently discontinued due to Garena's OB51 patch update.
+> The **Free Fire Likes Service** has been temporarily suspended due to Garena's OB51 patch update.
 > Level 2 accounts can no longer send likes, making the free service impossible to continue.
 >
-> **See [PROJECT_CLOSURE.md](PROJECT_CLOSURE.md) for complete details.**
+> **Bot Status**: ✅ **ACTIVE** - All other features work perfectly!
 >
-> The core bot features (coins, referrals, daily rewards) remain functional, but Free Fire integration is non-operational.
+> **See [PROJECT_CLOSURE.md](PROJECT_CLOSURE.md) for complete details about the likes service closure.**
+>
+> **What Still Works**:
+> - ✅ Coin balance system
+> - ✅ Referral rewards (50 coins per friend!)
+> - ✅ Daily rewards (10-50 coins every 24 hours)
+> - ✅ Transfer coins to friends
+> - ✅ Buy coins via UPI
+> - ✅ Leaderboard competition
+> - ✅ Admin panel
+> - ❌ Free Fire likes (temporarily disabled)
 
 ---
 
@@ -38,7 +48,7 @@ Your bot is **pre-configured** and ready to deploy:
 - **Buy Coins**: Purchase coin packages via UPI
 - **Leaderboard**: See top 10 richest users
 - **Transaction History**: View your last 5 transactions
-- **Free Fire Likes**: Send likes to Free Fire UIDs (coming soon)
+- **Free Fire Likes**: ~~Send likes to Free Fire UIDs~~ (temporarily closed - OB51 patch)
 
 ### Admin Features
 - **User Management**: Ban/unban users, view user info
@@ -191,12 +201,14 @@ The Flask server (`keep_alive.py`) helps with uptime monitoring services.
 |---------|-------------|
 | `/leaderboard` | See top 10 richest users |
 
-### Free Fire Commands (Coming Soon)
+### Free Fire Commands (Temporarily Closed)
 | Command | Description |
 |---------|-------------|
-| `/likes <uid>` | Send Free Fire likes to a UID |
-| `/likestatus` | Check your likes sending status |
-| `/likehistory` | View your likes usage history |
+| `/likes` | Information about service closure (OB51 patch) |
+| `/likestatus` | Current service status |
+| `/likehistory` | View archived likes history |
+
+**Note**: Free Fire likes service temporarily closed due to Garena's OB51 patch changes.
 
 ### Admin Commands
 | Command | Description |

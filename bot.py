@@ -51,10 +51,13 @@ from handlers.redeem import redeem_command
 from handlers.daily import daily_command
 from handlers.leaderboard import leaderboard_command
 from handlers.buy import buy_command, buy_callback, paid_command
-# HYBRID LIKES SYSTEM - Guest Accounts (Free) + HL Gaming Fallback
-from handlers.likes_hybrid import likes_hybrid_handler
-from handlers.likes import likestatus_command, likehistory_command
-from handlers.apihealth import apihealth_command
+# LIKES SYSTEM DISABLED - Service closed after OB51 patch
+from handlers.likes_disabled import (
+    likes_disabled_handler,
+    likestatus_disabled_command,
+    likehistory_disabled_command,
+)
+# from handlers.apihealth import apihealth_command  # Not needed - API services disabled
 
 # Import keep alive
 from keep_alive import keep_alive
@@ -144,13 +147,13 @@ def main():
     application.add_handler(CommandHandler("paid", paid_command))
     application.add_handler(CallbackQueryHandler(buy_callback, pattern="^buy_"))
 
-    # Free Fire likes commands - Hybrid System
-    application.add_handler(CommandHandler("likes", likes_hybrid_handler))
-    application.add_handler(CommandHandler("likestatus", likestatus_command))
-    application.add_handler(CommandHandler("likehistory", likehistory_command))
+    # Free Fire likes commands - DISABLED after OB51 patch
+    application.add_handler(CommandHandler("likes", likes_disabled_handler))
+    application.add_handler(CommandHandler("likestatus", likestatus_disabled_command))
+    application.add_handler(CommandHandler("likehistory", likehistory_disabled_command))
 
-    # API Health Check command (admin only)
-    application.add_handler(CommandHandler("apihealth", apihealth_command))
+    # API Health Check - DISABLED (no API services running)
+    # application.add_handler(CommandHandler("apihealth", apihealth_command))
 
     # Error handler
     application.add_error_handler(error_handler)
@@ -159,7 +162,7 @@ def main():
     keep_alive()
 
     # Start bot
-    logger.info("RepotechBot started successfully with HL Gaming API! Press Ctrl+C to stop.")
+    logger.info("RepotechBot started successfully! (Likes service disabled after OB51 patch) Press Ctrl+C to stop.")
     application.run_polling(allowed_updates=["message", "callback_query"])
 
 
