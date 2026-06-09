@@ -46,6 +46,10 @@ async def admin_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 📢 COMMUNICATION:
 /broadcast <message> - Send message to all users
 
+🎮 GUEST ACCOUNT MANAGEMENT:
+/validguests - Validate all guest accounts
+/removeinvalid - Remove invalid guest accounts
+
 🏥 API MONITORING:
 /apihealth - Check Free Fire API endpoints status
 /sysinfo - Show system and deployment information
@@ -685,3 +689,102 @@ async def sysinfo_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 """
 
     await update.message.reply_text(info_text)
+
+
+@admin_only
+async def validate_guests_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """
+    Admin command to validate all guest accounts
+
+    Usage: /validguests
+    """
+    msg = await update.message.reply_text(
+        "🔍 Starting guest account validation...\n\n"
+        "This may take a few minutes. Please wait..."
+    )
+
+    try:
+        # Import guest engine
+        import sys
+        import os
+        sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(__file__)), 'freefire'))
+        from guest_likes_engine import validate_all_guests, remove_invalid_guests
+
+        # Validate all guests
+        result = await validate_all_guests()
+
+        # Report results
+        status_msg = (
+            f"✅ Guest Account Validation Complete!\n\n"
+            f"📊 Total Accounts: {result['total']}\n"
+            f"✅ Valid: {result['valid']}\n"
+            f"❌ Invalid: {result['invalid']}\n"
+        )
+
+        if result['invalid'] > 0:
+            status_msg += f"\n⚠️ Found {result['invalid']} invalid accounts\n\n"
+            status_msg += f"Invalid UIDs:\n"
+            for uid in result['invalid_uids'][:10]:  # Show first 10
+                status_msg += f"• {uid}\n"
+
+            if len(result['invalid_uids']) > 10:
+                status_msg += f"\n... and {len(result['invalid_uids']) - 10} more\n"
+
+            status_msg += f"\n💡 Use /removeinvalid to remove these accounts"
+        else:
+            status_msg += f"\n✅ All guest accounts are working!"
+
+        await msg.edit_text(status_msg)
+
+    except Exception as e:
+        logger.error(f"Guest validation failed: {e}", exc_info=True)
+        await msg.edit_text(
+            f"❌ Validation failed!\n\n"
+            f"Error: {str(e)}"
+        )
+
+
+@admin_only
+async def remove_invalid_guests_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """
+    Admin command to remove invalid guest accounts
+
+    Usage: /removeinvalid
+    """
+    msg = await update.message.reply_text(
+        "🗑️ Removing invalid guest accounts...\n\n"
+        "Please wait..."
+    )
+
+    try:
+        import sys
+        import os
+        sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(__file__)), 'freefire'))
+        from guest_likes_engine import validate_all_guests, remove_invalid_guests
+
+        # First validate to get invalid UIDs
+        result = await validate_all_guests()
+
+        if result['invalid'] == 0:
+            await msg.edit_text(
+                "✅ No invalid accounts found!\n\n"
+                "All guest accounts are working properly."
+            )
+            return
+
+        # Remove invalid guests
+        await remove_invalid_guests(result['invalid_uids'])
+
+        await msg.edit_text(
+            f"✅ Cleanup Complete!\n\n"
+            f"🗑️ Removed: {result['invalid']} invalid accounts\n"
+            f"✅ Remaining: {result['valid']} valid accounts\n\n"
+            f"💾 Backup saved to guests_converted.backup.json"
+        )
+
+    except Exception as e:
+        logger.error(f"Guest removal failed: {e}", exc_info=True)
+        await msg.edit_text(
+            f"❌ Removal failed!\n\n"
+            f"Error: {str(e)}"
+        )

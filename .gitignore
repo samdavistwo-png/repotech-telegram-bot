@@ -47,3 +47,9 @@ ENV/
 # OS
 .DS_Store
 Thumbs.db
+
+# Guest account credentials (SECURITY)
+freefire/guests_manager/guests_converted.json
+freefire/guests_manager/guests_converted.backup.json
+freefire/guests_manager/formatted_guests.json
+usage_history/

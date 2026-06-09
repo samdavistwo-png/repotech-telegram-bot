@@ -24,11 +24,13 @@ def send_likes_hl_gaming(target_uid: str, amount: int = 100, region: str = "ind"
     Args:
         target_uid: Target player UID
         amount: Number of likes to send (default: 100)
-        region: Server region (ind, br, sg, us, etc.)
+        region: Server region (IND, BR, SG, US, etc. - case insensitive)
 
     Returns:
         Dict with result information
     """
+    # Normalize region to lowercase for HL Gaming API
+    region = region.lower()
 
     if not USER_UID or not API_KEY:
         logger.error("HL Gaming API credentials not configured!")

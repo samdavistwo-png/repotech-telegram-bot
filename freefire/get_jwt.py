@@ -78,8 +78,8 @@ async def create_jwt(uid: int, password: str) -> Tuple[str, str, str]:
     encoded_result = await json_to_proto(json_data, freefire_pb2.LoginReq())
     payload = aes_cbc_encrypt(MAIN_KEY, MAIN_IV, encoded_result)
     
-    # Use local auth server instead of ggblueshark
-    url = "http://localhost:8001/MajorLogin"
+    # Use ggblueshark auth server
+    url = "https://loginbp.ggblueshark.com/MajorLogin"
     headers = {
         'User-Agent': USERAGENT,
         'Connection': "Keep-Alive",

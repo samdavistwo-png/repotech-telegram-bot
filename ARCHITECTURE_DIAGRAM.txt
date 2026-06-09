@@ -1,0 +1,350 @@
+================================================================================
+HYBRID LIKES SYSTEM - ARCHITECTURE DIAGRAM
+================================================================================
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                           USER INTERACTION                                  │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+    Telegram User
+         │
+         │ /likes 1234567890
+         ▼
+    ┌─────────────────────────────────────────────────────────────┐
+    │                    BOT.PY (Main Bot)                        │
+    │  - Registers CommandHandler("likes", likes_hybrid_handler)  │
+    └─────────────────────────────────────────────────────────────┘
+         │
+         │ Route to handler
+         ▼
+
+================================================================================
+                           HANDLER LAYER
+================================================================================
+
+    ┌─────────────────────────────────────────────────────────────┐
+    │         handlers/likes_hybrid.py (HYBRID HANDLER)           │
+    │                                                             │
+    │  1. @check_banned decorator                                 │
+    │  2. @user_exists decorator                                  │
+    │  3. Validate UID format (6-12 digits, numeric)              │
+    │  4. Check user balance (50 coins required)                  │
+    │  5. Fetch player info (HL Gaming API)                       │
+    │  6. Check available guests for target UID                   │
+    │  7. Deduct coins BEFORE sending                             │
+    │  8. Decision: Which method to use?                          │
+    └─────────────────────────────────────────────────────────────┘
+         │
+         │ Method Selection Logic
+         ▼
+    ╔═════════════════════════════════════════════════════════════╗
+    ║              DECISION POINT: METHOD SELECTION               ║
+    ╚═════════════════════════════════════════════════════════════╝
+         │
+         ├───── ≥50 Guests Available? ──────┐
+         │                                   │
+         │ YES                               │ NO
+         ▼                                   ▼
+    ┌──────────────┐                  ┌──────────────┐
+    │ TRY GUEST    │                  │ USE HL       │
+    │ METHOD FIRST │                  │ GAMING       │
+    └──────────────┘                  │ DIRECTLY     │
+         │                            └──────────────┘
+         │                                   │
+         ▼                                   │
+    ┌──────────────┐                        │
+    │ Guest Result │                        │
+    └──────────────┘                        │
+         │                                   │
+         ├─ Success (≥50 likes) ─► DONE ✅   │
+         │                                   │
+         ├─ Partial/Failed ──┐               │
+         │                   │               │
+         └─ Exception ───────┤               │
+                             ▼               │
+                    ┌──────────────┐         │
+                    │ HL GAMING    │◄────────┘
+                    │ FALLBACK     │
+                    └──────────────┘
+                             │
+                             ├─ Success ──► DONE ✅
+                             │
+                             └─ Failed ───► REFUND + ERROR ❌
+
+================================================================================
+                        GUEST METHOD LAYER
+================================================================================
+
+    ┌─────────────────────────────────────────────────────────────┐
+    │      freefire/guest_likes_engine.py (GUEST ENGINE)          │
+    │                                                             │
+    │  Main Function: send_likes_with_guests()                    │
+    │    ├─ Load usage data (JSON)                                │
+    │    ├─ Filter available guests (unused for target)           │
+    │    ├─ Create 20 concurrent tasks (Semaphore)                │
+    │    ├─ For each guest: like_with_guest()                     │
+    │    ├─ Gather results                                        │
+    │    └─ Save usage data (JSON)                                │
+    └─────────────────────────────────────────────────────────────┘
+         │
+         │ For each guest (concurrent)
+         ▼
+    ┌─────────────────────────────────────────────────────────────┐
+    │              like_with_guest() (PER GUEST)                  │
+    │                                                             │
+    │  1. Check if guest already used for target                  │
+    │  2. Create JWT for guest (get_jwt.py)                       │
+    │  3. Create encrypted payload (encrypt_like_body.py)         │
+    │  4. Send POST to Garena server                              │
+    │  5. Mark guest as used for target                           │
+    └─────────────────────────────────────────────────────────────┘
+         │
+         │ HTTP POST
+         ▼
+    ┌─────────────────────────────────────────────────────────────┐
+    │            GARENA SERVERS (Direct Connection)               │
+    │                                                             │
+    │  • client.ind.freefiremobile.com (IND region)               │
+    │  • client.us.freefiremobile.com (US/BR regions)             │
+    │  • clientbp.ggblueshark.com (other regions)                 │
+    │                                                             │
+    │  Endpoint: /LikeProfile                                     │
+    │  Auth: Bearer JWT (from guest account)                      │
+    │  Body: Encrypted protobuf (uid + region)                    │
+    └─────────────────────────────────────────────────────────────┘
+
+================================================================================
+                        HL GAMING FALLBACK LAYER
+================================================================================
+
+    ┌─────────────────────────────────────────────────────────────┐
+    │         freefire/hl_gaming_likes_api.py (FALLBACK)          │
+    │                                                             │
+    │  Function: send_likes_hl_gaming()                           │
+    │    ├─ Check API credentials (env vars)                      │
+    │    ├─ Make API request to HL Gaming                         │
+    │    └─ Return result                                         │
+    └─────────────────────────────────────────────────────────────┘
+         │
+         │ HTTPS POST
+         ▼
+    ┌─────────────────────────────────────────────────────────────┐
+    │              HL GAMING API (Premium Service)                │
+    │                                                             │
+    │  • Requires API credentials (HL_GAMING_USERUID, API_KEY)    │
+    │  • Fast delivery (< 5 seconds)                              │
+    │  • Costs API credits                                        │
+    └─────────────────────────────────────────────────────────────┘
+
+================================================================================
+                        SUPPORTING MODULES
+================================================================================
+
+┌───────────────────────────────────────────────────────────────────────────┐
+│                          AUTHENTICATION                                   │
+├───────────────────────────────────────────────────────────────────────────┤
+│  freefire/get_jwt.py                                                      │
+│    • create_jwt(uid, password) → (jwt, region, server_url)               │
+│    • Uses: https://loginbp.ggblueshark.com/MajorLogin ✅ (FIXED)         │
+│    • Creates JWT for guest accounts                                       │
+│    • Returns auth token + region + server URL                            │
+└───────────────────────────────────────────────────────────────────────────┘
+
+┌───────────────────────────────────────────────────────────────────────────┐
+│                          ENCRYPTION                                       │
+├───────────────────────────────────────────────────────────────────────────┤
+│  freefire/encrypt_like_body.py                                            │
+│    • create_like_payload(uid, region) → encrypted_bytes                  │
+│    • Uses protobuf: ff_proto/send_like_pb2.py                            │
+│    • AES-CBC encryption with Garena keys                                 │
+│    • Returns binary payload for /LikeProfile                             │
+└───────────────────────────────────────────────────────────────────────────┘
+
+┌───────────────────────────────────────────────────────────────────────────┐
+│                          PLAYER INFO                                      │
+├───────────────────────────────────────────────────────────────────────────┤
+│  freefire/hl_gaming_player_api.py                                         │
+│    • get_player_info_hl_gaming(uid, region) → player_info                │
+│    • Fetches: name, level, likes, rank, guild                            │
+│    • Used for validation and display                                     │
+└───────────────────────────────────────────────────────────────────────────┘
+
+┌───────────────────────────────────────────────────────────────────────────┐
+│                          DATA STORAGE                                     │
+├───────────────────────────────────────────────────────────────────────────┤
+│  freefire/guests_manager/guests_converted.json                            │
+│    • 161 guest accounts (UID + password)                                 │
+│    • Format: [{"uid": "...", "password": "..."}, ...]                    │
+│    • Read-only (never modified)                                          │
+│                                                                           │
+│  usage_history/guest_usage_by_target.json                                 │
+│    • Per-target guest usage tracking                                     │
+│    • Format: {target_uid: {used_guests: {guest_uid: timestamp}, ...}}   │
+│    • Auto-created on first run                                           │
+│    • Thread-safe with async locks                                        │
+└───────────────────────────────────────────────────────────────────────────┘
+
+================================================================================
+                        DATA FLOW EXAMPLE
+================================================================================
+
+User: /likes 1234567890
+  │
+  ▼
+bot.py
+  │
+  ▼
+likes_hybrid_handler
+  │
+  ├─► Check available guests → 161 available
+  │
+  ├─► Deduct 50 coins
+  │
+  ├─► Try guest method (≥50 available)
+  │    │
+  │    ▼
+  │   guest_likes_engine.send_likes_with_guests()
+  │    │
+  │    ├─► Load usage_history/guest_usage_by_target.json
+  │    │     Current: {}
+  │    │
+  │    ├─► Filter unused guests for "1234567890"
+  │    │     Result: 161 available
+  │    │
+  │    ├─► Create 20 concurrent tasks (first 100 guests)
+  │    │    │
+  │    │    ▼
+  │    │   like_with_guest() × 100 (concurrent)
+  │    │    │
+  │    │    ├─► get_jwt(guest_uid, guest_pass)
+  │    │    │     └─► POST https://loginbp.ggblueshark.com/MajorLogin
+  │    │    │           Returns: JWT + region + server_url
+  │    │    │
+  │    │    ├─► encrypt_like_body(target_uid, region)
+  │    │    │     └─► Protobuf + AES encryption
+  │    │    │           Returns: Binary payload
+  │    │    │
+  │    │    ├─► POST https://client.ind.freefiremobile.com/LikeProfile
+  │    │    │     Headers: Authorization: Bearer {JWT}
+  │    │    │     Body: {encrypted_payload}
+  │    │    │     Result: 200 OK
+  │    │    │
+  │    │    └─► mark_used(target_uid, guest_uid, timestamp)
+  │    │
+  │    ├─► Gather results: 100 success, 0 failed
+  │    │
+  │    └─► Save usage_history/guest_usage_by_target.json
+  │          Updated: {"1234567890": {"used_guests": {100 entries}, "total_likes": 100}}
+  │
+  └─► Result: 100 likes sent successfully ✅
+
+Response to User:
+  ✅ Likes sent successfully!
+  ...
+  🎁 Method: Guest Accounts (Free)
+  🔢 Remaining Guests: 61 for this player
+  💰 Coins deducted: 50
+
+================================================================================
+                        FALLBACK FLOW EXAMPLE
+================================================================================
+
+User: /likes 1234567890 (same target, 2nd time after 161 uses)
+  │
+  ▼
+likes_hybrid_handler
+  │
+  ├─► Check available guests → 0 available (<50 threshold)
+  │
+  ├─► Deduct 50 coins
+  │
+  ├─► Use HL Gaming directly (insufficient guests)
+  │    │
+  │    ▼
+  │   hl_gaming_likes_api.send_likes_hl_gaming()
+  │    │
+  │    ├─► Check env vars: HL_GAMING_USERUID, HL_GAMING_API_KEY
+  │    │
+  │    ├─► POST to HL Gaming API
+  │    │     Params: uid, amount=100, region=ind
+  │    │
+  │    └─► Result: 100 likes sent ✅
+  │
+  └─► Result: 100 likes sent via HL Gaming ✅
+
+Response to User:
+  ✅ Likes sent successfully!
+  ...
+  ⚡ Method: HL Gaming Premium
+  💡 Note: Insufficient guest accounts
+  💰 Coins deducted: 50
+
+================================================================================
+                        ERROR HANDLING FLOW
+================================================================================
+
+User: /likes 1234567890
+  │
+  ▼
+likes_hybrid_handler
+  │
+  ├─► Try guest method
+  │    └─► Exception: Network error ❌
+  │
+  ├─► Log error and try HL Gaming fallback
+  │    │
+  │    ▼
+  │   send_likes_hl_gaming()
+  │    └─► Success: 100 likes sent ✅
+  │
+  └─► Result: Recovered via fallback ✅
+
+Response to User:
+  ✅ Likes sent successfully!
+  ...
+  ⚡ Method: HL Gaming Premium (Fallback)
+  💡 Note: Guest accounts exhausted/failed
+  💰 Coins deducted: 50
+
+---
+
+If BOTH methods fail:
+  │
+  ├─► Refund 50 coins to user
+  │
+  └─► Show error message ❌
+
+Response to User:
+  ❌ Failed to send likes!
+  Both guest and HL Gaming methods failed.
+  💰 Coins refunded (no charge).
+
+================================================================================
+                        COST COMPARISON
+================================================================================
+
+┌─────────────────┬──────────────┬──────────────┬──────────────────┐
+│ Scenario        │ Guest Method │ HL Gaming    │ Total Cost       │
+├─────────────────┼──────────────┼──────────────┼──────────────────┤
+│ Fresh Target    │ 100 likes    │ 0 likes      │ FREE             │
+│ (1st request)   │ (FREE)       │              │                  │
+├─────────────────┼──────────────┼──────────────┼──────────────────┤
+│ Fresh Target    │ 100 likes    │ 0 likes      │ FREE             │
+│ (2nd request)   │ (FREE)       │              │                  │
+├─────────────────┼──────────────┼──────────────┼──────────────────┤
+│ Fresh Target    │ 61 likes     │ 0 likes      │ FREE             │
+│ (3rd request)   │ (FREE)       │              │                  │
+├─────────────────┼──────────────┼──────────────┼──────────────────┤
+│ Exhausted       │ 0 likes      │ 100 likes    │ 1 API credit     │
+│ Target          │              │ (API cost)   │                  │
+├─────────────────┼──────────────┼──────────────┼──────────────────┤
+│ 10 Different    │ 1000 likes   │ 0 likes      │ FREE             │
+│ Targets         │ (FREE)       │              │                  │
+├─────────────────┼──────────────┼──────────────┼──────────────────┤
+│ Same Target     │ 16,100 likes │ 3,900 likes  │ 39 API credits   │
+│ 200 Times       │ (FREE)       │ (API cost)   │ (80.5% savings)  │
+└─────────────────┴──────────────┴──────────────┴──────────────────┘
+
+================================================================================
+END OF ARCHITECTURE DIAGRAM
+================================================================================
