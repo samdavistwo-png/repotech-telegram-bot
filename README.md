@@ -31,12 +31,6 @@ A comprehensive Telegram bot for coin management, referral system, daily rewards
 
 **Instant Deploy to Railway:** Click the button above or follow [RAILWAY_DEPLOY.md](RAILWAY_DEPLOY.md)
 
-Your bot is **pre-configured** and ready to deploy:
-- ✅ Admin ID: 6550771842
-- ✅ Bot Token: 8963786165:AAGDcSbQxbv7sGUfrJK95TpeT-u7nJMO2ps
-- ✅ 161 Free Fire guest accounts ready
-- ✅ All dependencies configured
-
 ## Features
 
 ### User Features
